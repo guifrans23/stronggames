@@ -15,7 +15,6 @@ import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
@@ -27,17 +26,9 @@ import model.DAO;
 import net.proteanit.sql.DbUtils;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-/* feito 17/11/2022 */
-import java.sql.*;
-import java.awt.Dialog.ModalExclusionType;
-
 
 public class Fornecedores extends JDialog {
-	/* feito 17/11/2022 */
-	Connection conexao = null;
-	PreparedStatement pst = null;
-	ResultSet rs = null;
-	
+
 	/**
 	 * 
 	 */
@@ -83,9 +74,6 @@ public class Fornecedores extends JDialog {
 	 * Create the dialog.
 	 */
 	public Fornecedores() {
-		initComponents();
-		conexao = Moduleconexao.conector();
-		
 		setTitle("Fornecedores");
 		setResizable(false);
 		setIconImage(Toolkit.getDefaultToolkit().getImage(Fornecedores.class.getResource("/img/favicon.png")));
@@ -102,8 +90,7 @@ public class Fornecedores extends JDialog {
 			@Override
 			public void keyReleased(KeyEvent e) {
 				//evento digitação
-				consultar();
-				/*btn consultar a função "consultar();" esta puxando o método consultar que esta na parte inferior do código  */
+				pesquisarFornecedorTabela();
 			}
 		});
 		txtPesquisarFornecedor.setBounds(97, 15, 181, 20);
@@ -315,7 +302,7 @@ public class Fornecedores extends JDialog {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				//evento clicar com o mouse na tabela
-				//setarCaixasTexto();
+				setarCaixasTexto();
 			}
 		});
 		scrollPane.setViewportView(tblFornecedores);
@@ -325,21 +312,49 @@ public class Fornecedores extends JDialog {
 	// Criar objeto para acessar o banco
 	DAO dao = new DAO();
 	
-	private void consultar() {
-		String sql = "select *from tlbusuario where idser=?";
+	/**
+	 * Método responsável pela pesquisa avançada do fornecedor
+	 * usando o nome de fantasia e a biblioteca rs2xml
+	 */
+	private void pesquisarFornecedorTabela() {
+		String readT = "select idfor as ID,fantasia as fornecedor,fone,contato from fornecedores where fantasia like ?";
 		try {
-			pst = conexao.prepareStatement(sql);
-			pst.setString(1, txtForId.getText());
-			rs=pst.executeQuery();
-			if (rs.next()) {
-				txtForCNPJ.setText(rs.getString(2)); /*caso a informação venha errada editar o numero */
-			} else {
-
-			}
+			// Estabelecer a conexão
+			Connection con = dao.conectar();
+			// Preparar a execução da query
+			PreparedStatement pst = con.prepareStatement(readT);
+			// Setar o argumento (fantasia)
+			// Substituir o ? pelo conteúdo da caixa de texto
+			pst.setString(1, txtPesquisarFornecedor.getText() + "%");
+			ResultSet rs = pst.executeQuery();
+			//uso da biblioteca rs2xml para "popular" a tabela
+			tblFornecedores.setModel(DbUtils.resultSetToTableModel(rs));
+			con.close();
+			
 		} catch (Exception e) {
-			JOptionPane.showMessageDialog(null, e);
+			System.out.println(e);
 		}
+		
 	}
 	
+	/**
+	 * Método responsável por setar as caixas de texto
+	 * de acordo com os campos da tabela (mouse click)
+	 */
+	private void setarCaixasTexto() {
+		//criar uma variável para receber a linha da tabela
+		int setar = tblFornecedores.getSelectedRow();
+		txtForId.setText(tblFornecedores.getModel().getValueAt(setar, 0).toString());
+		//txtForFantasia.setText(tblFornecedores.getModel().getValueAt(setar, 1).toString());
+	}
 	
+	// demais métodos do CRUD
+	
+	/**
+	 * Limpar campos
+	 */
+	private void limparCamposFornecedor() {
+		//limpar a tabela
+		((DefaultTableModel) tblFornecedores.getModel()).setRowCount(0);
+	}
 }
